@@ -77,7 +77,17 @@ QNEMainWindow::QNEMainWindow(QWidget *parent) :
 
     QDockWidget *dock = new QDockWidget(tr("Nodes"), this);
     dock->setAllowedAreas(Qt::LeftDockWidgetArea | Qt::RightDockWidgetArea);
+
     view = new QGraphicsView(dock);
+    view->setScene(scene);
+    view->setRenderHint(QPainter::Antialiasing, true);
+    view->setTransformationAnchor(QGraphicsView::AnchorUnderMouse);
+    view->setVerticalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
+    view->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
+    view->setViewportUpdateMode(QGraphicsView::FullViewportUpdate);
+    view->setDragMode(QGraphicsView::RubberBandDrag);
+    view->viewport()->installEventFilter(this);
+
     view->setScene(scene);
 
     view->setRenderHint(QPainter::Antialiasing, true);
@@ -154,4 +164,21 @@ void QNEMainWindow::addBlock()
 		b->addPort(names[rand() % 10], rand() % 2, 0, 0);
         b->setPos(view->sceneRect().center().toPoint());
 	}
+}
+
+bool QNEMainWindow::eventFilter(QObject *watched, QEvent *event)
+{
+    if (watched == view->viewport() && event->type() == QEvent::Wheel) {
+        QWheelEvent *wheelEvent = static_cast<QWheelEvent*>(event);
+        if (wheelEvent->modifiers() & Qt::ControlModifier) {
+            const double scaleFactor = 1.1;
+            if (wheelEvent->angleDelta().y() > 0) {
+                view->scale(scaleFactor, scaleFactor);
+            } else {
+                view->scale(1.0 / scaleFactor, 1.0 / scaleFactor);
+            }
+            return true;
+        }
+    }
+    return QMainWindow::eventFilter(watched, event);
 }

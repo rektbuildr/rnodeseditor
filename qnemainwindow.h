@@ -54,6 +54,10 @@ private:
     QMenu *fileMenu;
     QGraphicsView *view;
     QGraphicsScene *scene;
+
+protected:
+    bool eventFilter(QObject *watched, QEvent *event) override;
+
 };
 
 #endif // QNEMAINWINDOW_H
