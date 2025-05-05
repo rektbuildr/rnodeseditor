@@ -49,14 +49,17 @@ private slots:
 	void addBlock();
 
 private:
-
-	QNodesEditor *nodesEditor;
+    QPoint lastPanPoint;
+    bool isPanning;
+	  QNodesEditor *nodesEditor;
     QMenu *fileMenu;
     QGraphicsView *view;
     QGraphicsScene *scene;
 
 protected:
     bool eventFilter(QObject *watched, QEvent *event) override;
+
+
 
 };
 

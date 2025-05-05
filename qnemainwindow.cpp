@@ -28,17 +28,16 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. */
 
 #include "qnemainwindow.h"
 #include "ui_qnemainwindow.h"
-
 #include "qneblock.h"
 #include "qnodeseditor.h"
-
 #include <QGraphicsScene>
 #include <QFileDialog>
-
 #include "qneport.h"
+#include <QScrollBar>
+#include <QMouseEvent>
 
 QNEMainWindow::QNEMainWindow(QWidget *parent) :
-    QMainWindow(parent)
+    QMainWindow(parent), isPanning(false)
 {
 
 
@@ -82,8 +81,8 @@ QNEMainWindow::QNEMainWindow(QWidget *parent) :
     view->setScene(scene);
     view->setRenderHint(QPainter::Antialiasing, true);
     view->setTransformationAnchor(QGraphicsView::AnchorUnderMouse);
-    view->setVerticalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
-    view->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
+    view->setVerticalScrollBarPolicy(Qt::ScrollBarAsNeeded);
+    view->setHorizontalScrollBarPolicy(Qt::ScrollBarAsNeeded);
     view->setViewportUpdateMode(QGraphicsView::FullViewportUpdate);
     view->setDragMode(QGraphicsView::RubberBandDrag);
     view->viewport()->installEventFilter(this);
@@ -168,16 +167,53 @@ void QNEMainWindow::addBlock()
 
 bool QNEMainWindow::eventFilter(QObject *watched, QEvent *event)
 {
-    if (watched == view->viewport() && event->type() == QEvent::Wheel) {
-        QWheelEvent *wheelEvent = static_cast<QWheelEvent*>(event);
-        if (wheelEvent->modifiers() & Qt::ControlModifier) {
-            const double scaleFactor = 1.1;
-            if (wheelEvent->angleDelta().y() > 0) {
-                view->scale(scaleFactor, scaleFactor);
-            } else {
-                view->scale(1.0 / scaleFactor, 1.0 / scaleFactor);
+    if (watched == view->viewport()) {
+        switch (event->type()) {
+            case QEvent::Wheel: {
+                QWheelEvent *wheelEvent = static_cast<QWheelEvent*>(event);
+                if (wheelEvent->modifiers() & Qt::ControlModifier) {
+                    const double scaleFactor = 1.1;
+                    if (wheelEvent->angleDelta().y() > 0) {
+                        view->scale(scaleFactor, scaleFactor);
+                    } else {
+                        view->scale(1.0 / scaleFactor, 1.0 / scaleFactor);
+                    }
+                    return true;
+                }
+                break;
             }
-            return true;
+            case QEvent::MouseButtonPress: {
+                QMouseEvent *mouseEvent = static_cast<QMouseEvent*>(event);
+                if (mouseEvent->button() == Qt::MiddleButton) {
+                    isPanning = true;
+                    lastPanPoint = mouseEvent->pos();
+                    view->setCursor(Qt::ClosedHandCursor);
+                    return true;
+                }
+                break;
+            }
+            case QEvent::MouseButtonRelease: {
+                QMouseEvent *mouseEvent = static_cast<QMouseEvent*>(event);
+                if (mouseEvent->button() == Qt::MiddleButton) {
+                    isPanning = false;
+                    view->setCursor(Qt::ArrowCursor);
+                    return true;
+                }
+                break;
+            }
+            case QEvent::MouseMove: {
+                QMouseEvent *mouseEvent = static_cast<QMouseEvent*>(event);
+                if (isPanning) {
+                    QPointF delta = mouseEvent->pos() - lastPanPoint;
+                    view->horizontalScrollBar()->setValue(view->horizontalScrollBar()->value() - delta.x());
+                    view->verticalScrollBar()->setValue(view->verticalScrollBar()->value() - delta.y());
+                    lastPanPoint = mouseEvent->pos();
+                    return true;
+                }
+                break;
+            }
+            default:
+                break;
         }
     }
     return QMainWindow::eventFilter(watched, event);
